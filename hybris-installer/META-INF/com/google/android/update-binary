@@ -69,6 +69,7 @@ mount | grep -q "/data.*ext4" || abort 3 "Data is NOT formatted as ext4; check o
 [ -r $PARTITION_VENDOR ] || abort 4 "A vendor partition doesn't exist;
 
 # Android
+(mount | grep -q /system_root || mount /system_root)
 (mount | grep -q /system || mount /system) || abort 5 "Couldn't mount /system!"
 if [ `cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` != "$TARGET_LOS_VER" ]; then
 	if [ ! -f /tmp/sfos_flash_confirm ]; then
@@ -137,7 +138,7 @@ mkdir -p $FILES/
 unzip -o "$ZIPFILE" -x META-INF/* -d $FILES/
 
 log "Patching TWRP's broken tar..."
-(cp $FILES/tar /sbin/tar && chmod 777 /sbin/tar) || abort 8 "Couldn't patch tar!"
+(cp -f $FILES/tar /sbin/tar && chmod 777 /sbin/tar) || abort 8 "Couldn't patch tar!"
 
 log "Extracting SFOS rootfs..."
 ARCHIVE="$FILES/sfos-rootfs.tar.bz2"
