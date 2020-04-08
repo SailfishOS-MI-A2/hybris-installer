@@ -66,7 +66,7 @@ invalid_device && CURRENT_DEVICE=`getprop ro.build.product`
 mount | grep -q "/data.*ext4" || abort 3 "Data is NOT formatted as ext4; check out 'Wipe > Advanced' from TWRP!"
 
 # Treble
-[ -r $PARTITION_VENDOR ] || abort 4 "A vendor partition doesn't exist; you need to do an OTA from OxygenOS 5.1.5 to 5.1.6!"
+[ -r $PARTITION_VENDOR ] || abort 4 "A vendor partition doesn't exist;
 
 # Android
 (mount | grep -q /system || mount /system) || abort 5 "Couldn't mount /system!"
@@ -77,7 +77,6 @@ if [ `cat /system/build.prop | grep lineage.build.version= | cut -d'=' -f2` != "
 	fi
 	log "About to perform forced flash of SFOS"
 fi
-[ -f /system/bin/toybox ] || abort 8 "Your ROM doesn't ship with toybox; extracting of SFOS rootfs isn't possible!"
 if [ -f $ROOT/etc/os-release ]; then
 	if [ ! -f /tmp/sfos_fresh_confirm ]; then
 		touch /tmp/sfos_fresh_confirm
@@ -137,11 +136,14 @@ log "Extracting package '$ZIPFILE'..."
 mkdir -p $FILES/
 unzip -o "$ZIPFILE" -x META-INF/* -d $FILES/
 
+log "Patching TWRP's broken tar..."
+(cp $FILES/tar /sbin/tar && chmod 777 /sbin/tar) || abort 8 "Couldn't patch tar!"
+
 log "Extracting SFOS rootfs..."
 ARCHIVE="$FILES/sfos-rootfs.tar.bz2"
 rm -rf $ROOT/
 mkdir -p $ROOT/
-/system/bin/toybox tar -xj -f $ARCHIVE -C $ROOT/ || abort 10 "Couldn't extract SFOS rootfs!"
+tar -xj -f $ARCHIVE -C $ROOT/ || abort 10 "Couldn't extract SFOS rootfs!"
 rm $ARCHIVE
 
 log "Fixing up init scripts..."
@@ -151,7 +153,7 @@ sed -e "/extraenv/s/^/#/g" -e "/import \/init.\${ro.hardware}.rc/s/^/#/" -e "/ro
 rm $ROOT/init.extraenv.armeabi-v7a.rc
 
 log "Disabling forced encryption in vendor fstab..."
-(umount /vendor &> /dev/null; mount -o rw /vendor && sed "s/fileencryption/encryptable/" -i /vendor/etc/fstab.qcom) || log "Couldn't disable forced encryption!"
+ (umount /vendor &> /dev/null; mount -o rw /vendor && sed "s/fileencryption/encryptable/" -i /vendor/etc/fstab.qcom && sed "s/forceencrypt/encryptable/" -i /vendor/etc/fstab.qcom) || log "Couldn't disable forced encryption!"
 umount /vendor &
 
 if [[ "$TARGET_LOS_VER" = "16.0" && ! -f $ROOT/lib/systemd/system/mnt-vendor-persist.mount ]]; then
